@@ -39,8 +39,37 @@ void server::run_server()
 			socklen_t tmp_len = sizeof(tmp);
 			int fd = accept(_sfd, (struct sockaddr *)&tmp, &tmp_len);
 			fds.back().fd = fd;
-			client
-			_clients[fd] = 
+			// client
+			// _clients[fd] = 
 		}
 	}
+}
+
+std::vector<std::string> server::splitCommand(std::string str)
+{
+	std::vector<std::string> args;
+	size_t i = 0;
+
+	while (i < str.length())
+	{
+		while (i < str.length() && str[i] == ' ')
+			i++;
+		
+		if (i >= str.length())
+			break;
+
+		if (str[i] == ':')
+		{
+			args.push_back(str.substr(i + 1));
+			break;
+		}
+
+		size_t start = i;
+		while (i < str.length() && str[i] != ' ')
+			i++;
+
+		args.push_back(str.substr(start, i - start));
+	}
+	
+	return args;
 }

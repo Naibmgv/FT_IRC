@@ -29,6 +29,10 @@ class server
 		int _port;
 		std::string _password;
 		std::map<int, client> _clients;
+		std::vector<std::string> splitCommand(std::string str);
+		void executeJoin(client& c, std::vector<std::string> args);
+		void executeNick(client& c, std::vector<std::string> args);
+		void executePrivmsg(client& c, std::vector<std::string> args);
 	public:
 		server(int port, const std::string& password) : _port(port), _password(password) {};
 		server(const server& other) : _sfd(other._sfd) {};
@@ -51,26 +55,45 @@ class server
 		};
 		void init_server();
 		void run_server();
+
+		void parseAndExecute(client& c, std::string full_command);
+};
+
+enum State {
+	UNREGISTERED,
+	PASS_OK,
+	REGISTERED
 };
 
 class client
 {
 	private:
-		int _fd;
-		std::string _ip;
-	public:
-		client(int fd, const std::string& ip) : _fd(fd),_ip(ip) {};
-		client(const client& other) {};
-		client& operator=(const client& other) 
-		{
-			if (this != &other)
-			{
-				_ip = other._ip;
-			}
-			return *this;
-		};
-};
+		int			_fd;
+		std::string	_ip;
+		State		_state;
+		std::string _nick;
+		std::string _user;
+		std::string _readBuf;
+		std::string _writeBuf;
 
+	public:
+		client(int fd, const std::string& ip);
+		client(const client& other);
+		client& operator=(const client& other);
+		~client();
+		int		getFd() const;
+		State	getState() const;
+		std::string	getNick() const;
+		void	setState(State s);
+		void	setNick(std::string nick);
+		void	setUser(std::string user);
+		void	appendRead(std::string data);
+		void	appendWrite(std::string data);
+		bool	hasCommand() const;
+		std::string	getCommand();
+		std::string	getWriteBuf() const;
+		void	clearWriteBuf();
+};
 bool parsing(char *port, char *mdp);
 
 #endif
