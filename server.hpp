@@ -1,3 +1,4 @@
+
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
@@ -29,6 +30,7 @@ class server
 		int _port;
 		std::string _password;
 		std::map<int, client> _clients;
+		std::map<std::string, channel> _channels;
 		std::vector<std::string> splitCommand(std::string str);
 		void executePass(client& c, std::vector<std::string> args);
 		void executeUser(client& c, std::vector<std::string> args);
@@ -88,6 +90,7 @@ class client
 		int		getFd() const;
 		State	getState() const;
 		std::string	getNick() const;
+		std::string	getUser() const;
 		void	setState(State s);
 		void	setNick(std::string nick);
 		void	setUser(std::string user);
@@ -99,5 +102,43 @@ class client
 		void	clearWriteBuf();
 };
 bool parsing(char *port, char *mdp);
+
+class channel
+{
+	private:
+		std::string	_name;
+		std::string	_topic;
+		std::string	_password;
+		bool	_inviteOnly;
+		bool	_topicRestricted;
+		size_t	_userLimit;
+		std::vector<client*>	_clients;
+		std::vector<client*>	_operators;
+		std::vector<client*>	_invited;
+	public:
+		channel();
+		channel(std::string name);
+		channel(const channel& other);
+		channel& operator=(const channel& other);
+		~channel();
+		std::string	getName() const;
+		std::string	getTopic() const;
+		std::string	getPassword() const;
+		bool	isInviteOnly() const;
+		bool	isTopicRestricted() const;
+		size_t	getUserLimit() const;
+		void	setTopic(std::string topic);
+		void	setPassword(std::string password);
+		void	setInviteOnly(bool i);
+		void	setTopicRestricted(bool t);
+		void	setUserLimit(size_t limit);
+		void	addClient(client* c);
+		void	removeClient(client* c);
+		bool	hasClient(client* c);
+		void	addOperator(client* c);
+		void	removeOperator(client* c);
+		bool	isOperator(client* c);
+		void	broadcast(std::string message, client* sender);
+};
 
 #endif

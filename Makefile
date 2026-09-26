@@ -1,8 +1,8 @@
-NAME = ft_irc
+NAME = ircserv
 CXX = c++
 CXXFLAGS = -Wall -Wextra -Werror -std=c++98
 
-SRC = main.cpp parsing.cpp server.cpp
+SRC = main.cpp parsing.cpp server.cpp client.cpp channel.cpp
 OBJ = $(SRC:.cpp=.o)
 
 all: $(NAME)

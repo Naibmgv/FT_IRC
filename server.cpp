@@ -93,7 +93,7 @@ void server::executeJoin(client& c, std::vector<std::string> args)
 		// TODO IRC: Send ERR_NEEDMOREPARAMS (461)
 		return;
 	}
-	std::cout << "[DEBUG] JOIN target: " << args[0] << std::endl;
+
 	// TODO IRC: Channel creation/join logic, RPL_JOIN, RPL_TOPIC, RPL_NAMREPLY
 }
 
@@ -103,9 +103,13 @@ void server::executeNick(client& c, std::vector<std::string> args)
 		// TODO IRC: Send ERR_NONICKNAMEGIVEN (431)
 		return;
 	}
-	c.setNick(args[0]);
-	std::cout << "[DEBUG] NICK set to: " << args[0] << std::endl;
+
 	// TODO IRC: Check duplication (ERR_NICKNAMEINUSE 433)
+}
+
+void server::executeUser(client& c, std::vector<std::string> args)
+{
+	//TODO
 }
 
 void server::executePrivmsg(client& c, std::vector<std::string> args)
@@ -114,7 +118,6 @@ void server::executePrivmsg(client& c, std::vector<std::string> args)
 		// TODO IRC: Send ERR_NEEDMOREPARAMS (461)
 		return;
 	}
-	std::cout << "[DEBUG] PRIVMSG to " << args[0] << " msg: " << args[1] << std::endl;
 	// TODO IRC: Find target, append message to target's writeBuffer
 }
 
