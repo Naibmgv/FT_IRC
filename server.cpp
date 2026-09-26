@@ -95,6 +95,7 @@ void server::run_server()
 					i--;
 					continue;
 				}
+				_clients[pollfds[i].fd]._msgToSend.clear();
 			}
 		}
 	}
