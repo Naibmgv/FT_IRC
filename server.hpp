@@ -30,9 +30,13 @@ class server
 		std::string _password;
 		std::map<int, client> _clients;
 		std::vector<std::string> splitCommand(std::string str);
+		void executePass(client& c, std::vector<std::string> args);
+		void executeUser(client& c, std::vector<std::string> args);
 		void executeJoin(client& c, std::vector<std::string> args);
 		void executeNick(client& c, std::vector<std::string> args);
 		void executePrivmsg(client& c, std::vector<std::string> args);
+		void sendReply(client& c, std::string code, std::string message);
+		void checkRegistration(client& c);
 	public:
 		server(int port, const std::string& password) : _port(port), _password(password) {};
 		server(const server& other) : _sfd(other._sfd) {};
