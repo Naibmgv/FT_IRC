@@ -60,8 +60,9 @@ class client
 		int _fd;
 		std::string _ip;
 	public:
+		client() : _fd(-1), _ip("") {};
 		client(int fd, const std::string& ip) : _fd(fd),_ip(ip) {};
-		client(const client& other) : _fd(other._fd), _ip(other._ip), _buffer(other._buffer) {};
+		client(const client& other) : _fd(other._fd), _ip(other._ip) {};
 		client& operator=(const client& other) 
 		{
 			if (this != &other)

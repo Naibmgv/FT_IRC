@@ -31,7 +31,7 @@ void server::run_server()
 	pollfds.back().revents = 0;
 	while (true)
 	{
-		for(int i = 1; i < pollfds.size(); i++) // ckeck si on a un message a envoyer
+		for(std::size_t i = 1; i < pollfds.size(); i++) // ckeck si on a un message a envoyer
 		{
 			if (_clients[pollfds[i].fd]._msgToSend.empty())
 				pollfds[i].events = POLLIN;
@@ -51,7 +51,7 @@ void server::run_server()
 			pollfds.back().fd = fd_tmp;
 			_clients[fd_tmp] = client(fd_tmp, inet_ntoa(tmp.sin_addr));
 		}
-		for (int i = 0; i < pollfds.size(); i++) 
+		for (std::size_t i = 0; i < pollfds.size(); i++) 
 		{
 			if (pollfds[i].revents & POLLIN) // Reception message client
 			{
