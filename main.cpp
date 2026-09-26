@@ -1,7 +1,5 @@
 #include "server.hpp"
 
-
-
 int main(int ac, char **av)
 {
 	if (ac != 3) {
@@ -15,6 +13,7 @@ int main(int ac, char **av)
 	try
 	{
 		test.init_server();
+		test.run_server();
 	}
 	catch (const std::exception& e)
 	{

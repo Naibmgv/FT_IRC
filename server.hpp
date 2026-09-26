@@ -22,6 +22,8 @@
 #define GRE "\e[1;32m" // -> green
 #define YEL "\e[1;33m" // -> yellow
 
+class client;
+
 class server
 {
 	private:
@@ -41,14 +43,13 @@ class server
 		};
 		~server() {};
 
-		class server_error : public std::exception
-		{
+		class servinit_error : public std::exception {
 			public :
-				const char* what() const throw()
-				{
+				const char* what() const throw() {
 					return "Server error: initiation failed";
 				}
 		};
+	
 		void init_server();
 		void run_server();
 };
@@ -60,15 +61,20 @@ class client
 		std::string _ip;
 	public:
 		client(int fd, const std::string& ip) : _fd(fd),_ip(ip) {};
-		client(const client& other) {};
+		client(const client& other) : _fd(other._fd), _ip(other._ip), _buffer(other._buffer) {};
 		client& operator=(const client& other) 
 		{
 			if (this != &other)
 			{
+				_fd = other._fd;
 				_ip = other._ip;
+				_buffer = other._buffer;
 			}
 			return *this;
 		};
+
+		std::string _buffer;
+		std::string _msgToSend;
 };
 
 bool parsing(char *port, char *mdp);
