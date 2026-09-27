@@ -59,7 +59,7 @@ void server::run_server()
 				int rval = recv(pollfds[i].fd, tmp_buff, 1024, 0);
 				if (rval == -1 || rval == 0)
 				{
-					// *** Prevenir DEV B de faire les procedure de depart d'un client (quitter les channels etc..) avant de supprimer les variables*** //
+					removeClientGlobally(&_clients[i]);
 					close(pollfds[i].fd);
 					_clients.erase(pollfds[i].fd);
 					pollfds.erase(pollfds.begin() + i);
@@ -69,7 +69,7 @@ void server::run_server()
 				_clients[pollfds[i].fd].appendreadBuf(tmp_buff, rval);
 				if (_clients[pollfds[i].fd].getreadBuf().size() > 5000) // Systeme antiDDos
 				{
-					// *** Prevenir DEV B de faire les procedure de depart d'un client (quitter les channels etc..) avant de supprimer les variables*** //
+					removeClientGlobally(&_clients[i]);
 					close(pollfds[i].fd);
 					_clients.erase(pollfds[i].fd);
 					pollfds.erase(pollfds.begin() + i);
@@ -90,7 +90,7 @@ void server::run_server()
 				int rval = send(pollfds[i].fd, _clients[pollfds[i].fd].getWritebuf().c_str(), _clients[pollfds[i].fd].getWritebuf().size(), 0);
 				if (rval == -1)
 				{
-					// *** Prevenir DEV B de faire les procedure de depart d'un client (quitter les channels etc..) avant de supprimer les variables*** //
+					removeClientGlobally(&_clients[i]);
 					close(pollfds[i].fd);
 					_clients.erase(pollfds[i].fd);
 					pollfds.erase(pollfds.begin() + i);
@@ -103,12 +103,22 @@ void server::run_server()
 	}
 }
 
-void	server::removeClientGlobally(int fd)
+void server::removeClientGlobally(client* c)
 {
-	for(int i = 0; i < _clients.size(); i++)
+	if (_channels.empty()) return;
+	std::map<std::string, channel>::iterator it = _channels.begin();
+	while(it != _channels.end())
 	{
-		if (_clients[i].getFd() == fd) continue;
-		
+		if (it->second.hasClient(c))
+		{
+			std::string quitMsg = ":" + c->getNick() + "!" + c->getUser() + "@" + c->getIp() + "QUIT :Client disconnected\r\n";
+			it->second.broadcast(quitMsg, c);
+			it->second.removeClient(c);
+		}
+		if (it->second.isEmpty())
+			_channels.erase(it++);
+		else
+			++it;
 	}
 }
 
@@ -149,27 +159,90 @@ void server::sendReply(client& c, std::string code, std::string message)
 		nick = "*";
 	else
 		nick = c.getNick();
-	std::string reply = ":localhost " + code + " " + nick + " :" + message + "\r\n";
+	std::string reply;
+	if (code[0])
+		reply = ":localhost " + code + " " + nick + " :" + message + "\r\n";
+	else
+		reply = ":localhost " + nick + " :" + message + "\r\n";
 	c.appendWrite(reply);
 }
 
 void server::executeJoin(client& c, std::vector<std::string> args)
 {
-	if (args.empty())
+	if (args.empty() || !args[1][0])
 	{
-		// TODO IRC: Send ERR_NEEDMOREPARAMS (461)
+		sendReply(c, "461", "ERR_NEEDMOREPARAMS");
 		return;
 	}
-	// TODO IRC: Channel creation/join logic, RPL_JOIN, RPL_TOPIC, RPL_NAMREPLY
+	if (_channels.find(args[1]) == _channels.end())
+	{
+		channel tmp;
+		tmp.setName(args[1]);
+	}
+	if (_channels[args[1]].getUserLimit() != 0)
+	{
+		if (_channels[args[1]].getUserAmount() >= _channels[args[1]].getUserLimit())
+		{
+			sendReply(c, "471", "ERR_CHANNELISFULL");
+			return ;
+		}
+	}
+	_channels[args[1]].addClient(&c);
+	_channels[args[1]].broadcast(c.getUser() + "is joining the channnel", &c);
+	if (_channels[args[1]].getTopic().empty())
+		sendReply(c, "331", args[1] + " :No topic is set");
+	else
+		sendReply(c, "332", args[1] + _channels[args[1]].getTopic());
+	sendReply (c, "", _channels[args[1]].getAllUsers());
 }
 
 void server::executePrivmsg(client& c, std::vector<std::string> args)
 {
-	if (args.size() < 2) {
-		// TODO IRC: Send ERR_NEEDMOREPARAMS (461)
+	if (args.size() == 1 || (args.size() == 2 && args[2].empty()))
+	{
+		sendReply(c, "411", "ERR_NORECIPIENT");
 		return;
 	}
-	// TODO IRC: Find target, append message to target's writeBuffer
+	if (args.size() == 2 || (args.size() == 3 && args[3].empty()))
+	{
+		sendReply(c, "412", "ERR_NOTEXTTOSEND");
+		return ;
+	}
+	std::string msg;
+	for(int i = 2; i < args.size(); i++)
+		msg += args[i] + ' ';
+	msg.erase(msg.size() - 1);
+	if (msg[0] == ':')
+		msg.erase(msg.front());
+	std::string fullmsg = ":" + c.getNick() + "!" + c.getUser() + "@" + c.getIp() + " PRIVMSG " + args[1] + " :" + msg + "\r\n";
+	if (args[2][0] == '#')
+	{
+		channels_iterator it = _channels.find(args[2]);
+		if (it == _channels.end())
+		{
+			sendReply(c, "403", "ERR_NOSUCHCHANNEL");
+			return;
+		}
+		it->second.broadcast(msg, &c);
+	}
+	else
+	{
+		std::map<int, client>::iterator it = _clients.begin();
+		while (it != _clients.end())
+		{
+			if (it->second.getNick() == args[1])
+			{
+				it->second.appendWrite(fullmsg);
+				break ;
+			}
+			++it;
+		}
+		if (it == _clients.end())
+		{
+			sendReply(c, "401", "ERR_NOSUCHNICK");
+			return ;
+		}
+	}
 }
 
 void server::executePass(client& c, std::vector<std::string> args)

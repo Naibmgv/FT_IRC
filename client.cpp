@@ -6,7 +6,7 @@
 /*   By: nmagamad <nmagamad@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/26 17:55:05 by ehattab           #+#    #+#             */
-/*   Updated: 2026/09/26 21:05:27 by nmagamad         ###   ########.fr       */
+/*   Updated: 2026/09/27 15:37:05 by nmagamad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -97,4 +97,9 @@ std::string client::getWritebuf() const
 void	client::resetwritebuf(std::string::size_type pos)
 {
 	_writeBuf.erase(0, pos);
+}
+
+std::string client::getIp() const
+{
+	return _ip;
 }

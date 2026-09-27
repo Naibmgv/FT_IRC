@@ -6,7 +6,7 @@
 /*   By: nmagamad <nmagamad@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/26 17:55:01 by ehattab           #+#    #+#             */
-/*   Updated: 2026/09/26 21:54:35 by nmagamad         ###   ########.fr       */
+/*   Updated: 2026/09/27 16:38:40 by nmagamad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,22 +47,27 @@ std::string channel::getName() const
 {
 	return _name;
 }
+
 std::string channel::getTopic() const
 {
 	return _topic;
 }
+
 std::string channel::getPassword() const
 {
 	return _password;
-	}
+}
+
 bool	channel::isInviteOnly() const
 {
 	return _inviteOnly;
 }
+
 bool	channel::isTopicRestricted() const
 {
 	return _topicRestricted;
 }
+
 size_t	channel::getUserLimit() const
 {
 	return _userLimit;
@@ -72,18 +77,22 @@ void channel::setTopic(std::string topic)
 {
 	_topic = topic;
 }
+
 void channel::setPassword(std::string password)
 {
 	_password = password;
 }
+
 void channel::setInviteOnly(bool i)
 {
 	_inviteOnly = i;
 }
+
 void channel::setTopicRestricted(bool t)
 {
 	_topicRestricted = t;
 }
+
 void channel::setUserLimit(size_t limit)
 {
 	_userLimit = limit;
@@ -154,4 +163,31 @@ void channel::broadcast(std::string message, client* sender)
 		if (sender == NULL || _clients[i]->getFd() != sender->getFd())
 			_clients[i]->appendWrite(message);
 	}
+}
+
+bool channel::isEmpty() const
+{
+	return _clients.empty();
+}
+
+void	channel::setName(const std::string& name)
+{
+	_name = name;
+}
+
+size_t channel::getUserAmount() const
+{
+	return _clients.size();
+}
+
+std::string channel::getAllUsers() const
+{
+	if (_operators.empty() && _clients.empty()) return "";
+	std::string nameslist;
+	for(int i = 0; i < _operators.size(); i++)
+		nameslist += "@" + _operators[i]->getUser() + " ";
+	for(int i = 0; i < _clients.size(); i++)
+		nameslist += _clients[i]->getUser() + " ";
+	nameslist.erase(nameslist.end() - 1);
+	return nameslist;
 }

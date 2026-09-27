@@ -1,4 +1,3 @@
-
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
@@ -28,6 +27,10 @@ bool parsing(char *port, char *mdp);
 class client;
 class channel;
 
+typedef std::map<std::string, channel>::iterator channels_iterator;
+
+// typedef std::map<int, client>::iterator clients_iterator;
+
 class server
 {
 	private:
@@ -38,9 +41,9 @@ class server
 		std::map<std::string, channel> _channels;
 		std::vector<std::string> splitCommand(std::string str);
 		void executePass(client& c, std::vector<std::string> args);
+		void executeNick(client& c, std::vector<std::string> args);
 		void executeUser(client& c, std::vector<std::string> args);
 		void executeJoin(client& c, std::vector<std::string> args);
-		void executeNick(client& c, std::vector<std::string> args);
 		void executePrivmsg(client& c, std::vector<std::string> args);
 		void sendReply(client& c, std::string code, std::string message);
 		void checkRegistration(client& c);
@@ -66,7 +69,7 @@ class server
 		void init_server();
 		void run_server();
 
-		void removeClientGlobally(int fd);
+		void removeClientGlobally(client* c);
 		void parseAndExecute(client& c, std::string full_command);
 };
 
@@ -93,8 +96,9 @@ class client
 		client& operator=(const client& other);
 		~client();
 
-		int		getFd() const;
-		State	getState() const;
+		int			getFd() const;
+		std::string getIp() const;
+		State		getState() const;
 		std::string	getNick() const;
 		std::string	getUser() const;
 		std::string	getreadBuf() const;
@@ -129,23 +133,33 @@ class channel
 		channel(const channel& other);
 		channel& operator=(const channel& other);
 		~channel();
+
+		std::string getAllUsers() const;
 		std::string	getName() const;
 		std::string	getTopic() const;
 		std::string	getPassword() const;
+		size_t	getUserLimit() const;
+		size_t	getUserAmount() const;
+		bool isEmpty() const;
+
 		bool	isInviteOnly() const;
 		bool	isTopicRestricted() const;
-		size_t	getUserLimit() const;
+
+		void	setName(const std::string& name);
 		void	setTopic(std::string topic);
 		void	setPassword(std::string password);
 		void	setInviteOnly(bool i);
 		void	setTopicRestricted(bool t);
 		void	setUserLimit(size_t limit);
+
 		void	addClient(client* c);
 		void	removeClient(client* c);
 		bool	hasClient(client* c);
+
 		void	addOperator(client* c);
 		void	removeOperator(client* c);
 		bool	isOperator(client* c);
+
 		void	broadcast(std::string message, client* sender);
 };
 
