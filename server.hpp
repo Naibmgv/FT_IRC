@@ -23,7 +23,10 @@
 #define GRE "\e[1;32m" // -> green
 #define YEL "\e[1;33m" // -> yellow
 
+bool parsing(char *port, char *mdp);
+
 class client;
+class channel;
 
 class server
 {
@@ -63,6 +66,7 @@ class server
 		void init_server();
 		void run_server();
 
+		void removeClientGlobally(int fd);
 		void parseAndExecute(client& c, std::string full_command);
 };
 
@@ -88,21 +92,24 @@ class client
 		client(const client& other);
 		client& operator=(const client& other);
 		~client();
+
 		int		getFd() const;
 		State	getState() const;
 		std::string	getNick() const;
 		std::string	getUser() const;
+		std::string	getreadBuf() const;
+		std::string getWritebuf() const;
+
 		void	setState(State s);
 		void	setNick(std::string nick);
 		void	setUser(std::string user);
-		void	appendRead(std::string data);
-		void	appendWrite(std::string data);
-		bool	hasCommand() const;
-		std::string	getCommand();
-		std::string	getWriteBuf() const;
-		void	clearWriteBuf();
-};
+		
+		void	appendreadBuf(std::string data, int rval);
+		void	resetreadbuf(std::string::size_type pos);
 
+		void	appendWrite(std::string data);
+		void	resetwritebuf(std::string::size_type pos);
+};
 
 class channel
 {

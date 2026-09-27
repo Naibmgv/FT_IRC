@@ -33,7 +33,7 @@ void server::run_server()
 	{
 		for(std::size_t i = 1; i < pollfds.size(); i++) // ckeck si on a un message a envoyer
 		{
-			if (_clients[pollfds[i].fd]._msgToSend.empty())
+			if (_clients[pollfds[i].fd].getWritebuf().empty())
 				pollfds[i].events = POLLIN;
 			else
 				pollfds[i].events = POLLIN | POLLOUT;
@@ -66,8 +66,8 @@ void server::run_server()
 					i--;
 					continue;
 				}
-				_clients[pollfds[i].fd]._buffer.append(tmp_buff, rval);
-				if (_clients[pollfds[i].fd]._buffer.size() > 5000) // Systeme antiDDos
+				_clients[pollfds[i].fd].appendreadBuf(tmp_buff, rval);
+				if (_clients[pollfds[i].fd].getreadBuf().size() > 5000) // Systeme antiDDos
 				{
 					// *** Prevenir DEV B de faire les procedure de depart d'un client (quitter les channels etc..) avant de supprimer les variables*** //
 					close(pollfds[i].fd);
@@ -76,17 +76,19 @@ void server::run_server()
 					i--;
 					continue;
 				}
-				std::string::size_type pos = _clients[pollfds[i].fd]._buffer.find("\r\n");
+				std::string::size_type pos = _clients[pollfds[i].fd].getreadBuf().find("\r\n");
 				if (pos != std::string::npos)
 				{
-					std::string command = _clients[pollfds[i].fd]._buffer.substr();
-					// *** Appeler la fonction de DEV B pour gerer les commandes *** //
+					std::string command = _clients[pollfds[i].fd].getreadBuf().substr(0, pos + 2);
+					parseAndExecute(_clients[pollfds[i].fd], command);
+					_clients[pollfds[i].fd].resetreadbuf(pos + 2);
 				}
 			}
 			if (pollfds[i].revents & POLLOUT)
 			{
-				if (_clients[pollfds[i].fd]._msgToSend.empty()) continue;
-				if (send(pollfds[i].fd, _clients[pollfds[i].fd]._msgToSend.c_str(), sizeof(_clients[pollfds[i].fd]._msgToSend.c_str()), 0) == -1) // Systeme antiDDos
+				if (_clients[pollfds[i].fd].getWritebuf().empty()) continue;
+				int rval = send(pollfds[i].fd, _clients[pollfds[i].fd].getWritebuf().c_str(), _clients[pollfds[i].fd].getWritebuf().size(), 0);
+				if (rval == -1)
 				{
 					// *** Prevenir DEV B de faire les procedure de depart d'un client (quitter les channels etc..) avant de supprimer les variables*** //
 					close(pollfds[i].fd);
@@ -95,9 +97,18 @@ void server::run_server()
 					i--;
 					continue;
 				}
-				_clients[pollfds[i].fd]._msgToSend.clear();
+				_clients[pollfds[i].fd].resetwritebuf(rval);
 			}
 		}
+	}
+}
+
+void	server::removeClientGlobally(int fd)
+{
+	for(int i = 0; i < _clients.size(); i++)
+	{
+		if (_clients[i].getFd() == fd) continue;
+		
 	}
 }
 
@@ -149,23 +160,7 @@ void server::executeJoin(client& c, std::vector<std::string> args)
 		// TODO IRC: Send ERR_NEEDMOREPARAMS (461)
 		return;
 	}
-
 	// TODO IRC: Channel creation/join logic, RPL_JOIN, RPL_TOPIC, RPL_NAMREPLY
-}
-
-void server::executeNick(client& c, std::vector<std::string> args)
-{
-	if (args.empty()) {
-		// TODO IRC: Send ERR_NONICKNAMEGIVEN (431)
-		return;
-	}
-
-	// TODO IRC: Check duplication (ERR_NICKNAMEINUSE 433)
-}
-
-void server::executeUser(client& c, std::vector<std::string> args)
-{
-	//TODO
 }
 
 void server::executePrivmsg(client& c, std::vector<std::string> args)
@@ -195,6 +190,21 @@ void server::executePass(client& c, std::vector<std::string> args)
 		sendReply(c, "464", "Password incorrect");
 }
 
+void server::executeNick(client& c, std::vector<std::string> args)
+{
+	if (args.empty()) {
+		// TODO IRC: Send ERR_NONICKNAMEGIVEN (431)
+		return;
+	}
+
+	// TODO IRC: Check duplication (ERR_NICKNAMEINUSE 433)
+}
+
+void server::executeUser(client& c, std::vector<std::string> args)
+{
+	//TODO
+}
+
 void server::checkRegistration(client &c)
 {
 	if (c.getState() == REGISTERED)
@@ -210,7 +220,7 @@ void server::parseAndExecute(client &c, std::string full_command)
 {
 	std::vector<std::string> args = splitCommand(full_command);
 	if (args.empty())
-	return;
+		return;
 	std::string command_name = args[0];
 	args.erase(args.begin());
 	if (c.getState() != REGISTERED)

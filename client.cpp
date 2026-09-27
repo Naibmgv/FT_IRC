@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   client.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ehattab <ehattab@student.42.fr>            +#+  +:+       +#+        */
+/*   By: nmagamad <nmagamad@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/26 17:55:05 by ehattab           #+#    #+#             */
-/*   Updated: 2026/09/26 17:55:07 by ehattab          ###   ########.fr       */
+/*   Updated: 2026/09/26 21:05:27 by nmagamad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -69,43 +69,32 @@ void client::setUser(std::string user)
 	_user = user;
 }
 
-void client::appendRead(std::string data)
-{
-	_readBuf += data;
-}
-
 void client::appendWrite(std::string data)
 {
 	_writeBuf += data;
 }
 
-bool client::hasCommand() const
+std::string client::getreadBuf() const
 {
-	size_t position = _readBuf.find("\r\n");
-	if (position == std::string::npos)
-		return false;
-	else
-		return true;
+	return _readBuf;
 }
 
-std::string client::getCommand()
+void client::appendreadBuf(std::string data, int rval)
 {
-	size_t position = _readBuf.find("\r\n");
-	if (position == std::string::npos)
-	{
-		return "";
-	}
-	std::string cmd = _readBuf.substr(0, position);
-	_readBuf.erase(0, position + 2);
-	return cmd;
+	_readBuf.append(data, rval);
 }
 
-std::string client::getWriteBuf() const
+void client::resetreadbuf(std::string::size_type pos)
+{
+		_readBuf.erase(0, pos);
+}
+
+std::string client::getWritebuf() const
 {
 	return _writeBuf;
 }
 
-void client::clearWriteBuf()
+void	client::resetwritebuf(std::string::size_type pos)
 {
-	_writeBuf.clear();
+	_writeBuf.erase(0, pos);
 }

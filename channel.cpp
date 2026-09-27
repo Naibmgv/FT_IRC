@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   channel.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ehattab <ehattab@student.42.fr>            +#+  +:+       +#+        */
+/*   By: nmagamad <nmagamad@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/26 17:55:01 by ehattab           #+#    #+#             */
-/*   Updated: 2026/09/26 18:16:54 by ehattab          ###   ########.fr       */
+/*   Updated: 2026/09/26 21:54:35 by nmagamad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -94,7 +94,6 @@ void channel::addClient(client* c)
 	if (!hasClient(c))
 		_clients.push_back(c);
 }
-
 
 void channel::removeClient(client* c)
 {
