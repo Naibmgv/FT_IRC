@@ -79,7 +79,7 @@ void server::run_server()
 				std::string::size_type pos = _clients[pollfds[i].fd].getreadBuf().find("\r\n");
 				if (pos != std::string::npos)
 				{
-					std::string command = _clients[pollfds[i].fd].getreadBuf().substr(0, pos + 2);
+					std::string command = _clients[pollfds[i].fd].getreadBuf().substr(0, pos);
 					parseAndExecute(_clients[pollfds[i].fd], command);
 					_clients[pollfds[i].fd].resetreadbuf(pos + 2);
 				}
@@ -147,7 +147,6 @@ std::vector<std::string> server::splitCommand(std::string str)
 
 		args.push_back(str.substr(start, i - start));
 	}
-	
 	return args;
 }
 
@@ -289,6 +288,16 @@ void server::checkRegistration(client &c)
 	}
 }
 
+void server::executePONG(client& c, std::vector<std::string> args)
+{
+	if (args.size() == 1)
+	{
+		sendReply(c, "409", "ERR_NOORIGIN");
+		return ;
+	}
+	c.appendWrite(":localhost PONG :" + args[1] + "\r\n");
+}
+
 void server::parseAndExecute(client &c, std::string full_command)
 {
 	std::vector<std::string> args = splitCommand(full_command);
@@ -305,7 +314,11 @@ void server::parseAndExecute(client &c, std::string full_command)
 		return;
 	}
 
-	if (command_name == "JOIN")
+	if (command_name == "WHO" || command_name == "VERSION" || command_name == "CAP LS" || command_name == "MOTD" || command_name == "LUSERS")
+		return ;
+	else if (command_name == "PING")
+		executePONG(c, args);
+	else if (command_name == "JOIN")
 		executeJoin(c, args);
 	else if (command_name == "PRIVMSG")
 		executePrivmsg(c, args);

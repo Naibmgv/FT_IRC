@@ -29,17 +29,18 @@ class channel;
 
 typedef std::map<std::string, channel>::iterator channels_iterator;
 
-// typedef std::map<int, client>::iterator clients_iterator;
-
 class server
 {
 	private:
 		int _sfd;
 		int _port;
 		std::string _password;
+
 		std::map<int, client> _clients;
 		std::map<std::string, channel> _channels;
+
 		std::vector<std::string> splitCommand(std::string str);
+		void executePONG(client& c, std::vector<std::string> args);
 		void executePass(client& c, std::vector<std::string> args);
 		void executeNick(client& c, std::vector<std::string> args);
 		void executeUser(client& c, std::vector<std::string> args);
