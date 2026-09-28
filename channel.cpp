@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   channel.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: naib <naib@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: nmagamad <nmagamad@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/26 17:55:01 by ehattab           #+#    #+#             */
-/*   Updated: 2026/09/28 17:55:24 by naib             ###   ########.fr       */
+/*   Updated: 2026/09/28 19:50:16 by nmagamad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -210,7 +210,7 @@ void channel::removecurrentModes(std::string data)
 	}
 }
 
-std::string channel::getcurrentModes() const
+std::string channel::getcurrentModes()
 {
 	if (_currentModes.empty())
 		_currentModes += "+";

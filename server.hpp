@@ -138,7 +138,7 @@ class channel
 		channel& operator=(const channel& other);
 		~channel();
 
-		std::string getcurrentModes() const;
+		std::string getcurrentModes();
 		std::string getAllUsers() const;
 		std::string	getName() const;
 		std::string	getTopic() const;

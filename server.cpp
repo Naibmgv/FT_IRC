@@ -312,9 +312,8 @@ void server::parseAndExecute(client &c, std::string full_command)
 		else if (command_name == "NICK") executeNick(c, args);
 		else if (command_name == "USER") executeUser(c, args);
 		else sendReply(c, "451", "You have not registered");
-		return;
+		
 	}
-
 	if (command_name == "WHO" || command_name == "VERSION" || command_name == "CAP LS" || command_name == "MOTD" || command_name == "LUSERS")
 		return ;
 	else if (command_name == "PING")
@@ -325,7 +324,7 @@ void server::parseAndExecute(client &c, std::string full_command)
 		executePrivmsg(c, args);
 	else if (command_name == "NICK")
 		executeNick(c, args);
-	else if (commande_name == "MODE")
+	else if (command_name == "MODE")
 		executeMode(c, args);
 	else
 		sendReply(c, "421", command_name + " :Unknown command");
