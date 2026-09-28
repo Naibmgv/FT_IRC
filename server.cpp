@@ -248,33 +248,57 @@ void server::executePass(client& c, std::vector<std::string> args)
 {
 	if (args.empty())
 	{
-		sendReply(c, "461", "PASS :Not enough parameters");
+		sendReply(c, "461", "PASS :ERR_NEEDMOREPARAMS");
 		return;
 	}
 	if (c.getState() != UNREGISTERED)
 	{
-		sendReply(c, "462", "You may not reregister");
+		sendReply(c, "462", "ERR_ALREADYREGISTRED");
 		return;
 	}
 	if (args[0] == _password)
 		c.setState(PASS_OK);
 	else
-		sendReply(c, "464", "Password incorrect");
+		sendReply(c, "464", "ERR_PASSWDMISMATCH");
 }
 
 void server::executeNick(client& c, std::vector<std::string> args)
 {
-	if (args.empty()) {
-		// TODO IRC: Send ERR_NONICKNAMEGIVEN (431)
+	if (args.empty() || args[0].empty())
+	{
+		sendReply(c, "431", "ERR_NONICKNAMEGIVEN");
 		return;
 	}
-
-	// TODO IRC: Check duplication (ERR_NICKNAMEINUSE 433)
+	std::string new_nick = args[0];
+	std::map<int, client>::iterator it = _clients.begin();
+	
+	while (it != _clients.end())
+	{
+		if (it->second.getNick() == new_nick && it->first != c.getFd())
+		{
+			sendReply(c, "433", new_nick + " :ERR_NICKNAMEINUSE");
+			return;
+		}
+		++it;
+	}
+	c.setNick(new_nick);
+	checkRegistration(c);
 }
 
 void server::executeUser(client& c, std::vector<std::string> args)
 {
-	//TODO
+	if (args.size() < 4)
+	{
+		sendReply(c, "461", "USER :ERR_NEEDMOREPARAMS");
+		return;
+	}
+	if (c.getState() == REGISTERED || !c.getUser().empty())
+	{
+		sendReply(c, "462", "ERR_ALREADYREGISTRED");
+		return;
+	}
+	c.setUser(args[0]);
+	checkRegistration(c);
 }
 
 void server::checkRegistration(client &c)
