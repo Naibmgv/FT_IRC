@@ -40,6 +40,8 @@ class server
 		std::map<std::string, channel> _channels;
 
 		std::vector<std::string> splitCommand(std::string str);
+		void executeMode(client& c, std::vector<std::string> args);
+		void executeKick(client& c, std::vector<std::string> args);
 		void executePONG(client& c, std::vector<std::string> args);
 		void executePass(client& c, std::vector<std::string> args);
 		void executeNick(client& c, std::vector<std::string> args);
@@ -122,6 +124,7 @@ class channel
 		std::string	_name;
 		std::string	_topic;
 		std::string	_password;
+		std::string _currentModes;
 		bool	_inviteOnly;
 		bool	_topicRestricted;
 		size_t	_userLimit;
@@ -135,6 +138,7 @@ class channel
 		channel& operator=(const channel& other);
 		~channel();
 
+		std::string getcurrentModes() const;
 		std::string getAllUsers() const;
 		std::string	getName() const;
 		std::string	getTopic() const;
@@ -146,6 +150,8 @@ class channel
 		bool	isInviteOnly() const;
 		bool	isTopicRestricted() const;
 
+		void 	removecurrentModes(std::string data);
+		void	setcurrentModes(std::string data);
 		void	setName(const std::string& name);
 		void	setTopic(std::string topic);
 		void	setPassword(std::string password);

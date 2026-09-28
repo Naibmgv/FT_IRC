@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   channel.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: nmagamad <nmagamad@student.42.fr>          +#+  +:+       +#+        */
+/*   By: naib <naib@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/26 17:55:01 by ehattab           #+#    #+#             */
-/*   Updated: 2026/09/27 16:38:40 by nmagamad         ###   ########.fr       */
+/*   Updated: 2026/09/28 17:55:24 by naib             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -190,4 +190,29 @@ std::string channel::getAllUsers() const
 		nameslist += _clients[i]->getUser() + " ";
 	nameslist.erase(nameslist.end() - 1);
 	return nameslist;
+}
+
+void channel::setcurrentModes(std::string data)
+{
+	if (_currentModes.empty())
+		_currentModes += "+";
+	_currentModes += data;
+}
+
+void channel::removecurrentModes(std::string data)
+{
+	if (_currentModes.empty())
+		return ;
+	for (int i = 0; i < _currentModes.size(); i++)
+	{
+		if (data.find(_currentModes[i]))
+			_currentModes.erase(_currentModes[i]);
+	}
+}
+
+std::string channel::getcurrentModes() const
+{
+	if (_currentModes.empty())
+		_currentModes += "+";
+	return _currentModes;
 }

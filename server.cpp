@@ -103,6 +103,22 @@ void server::run_server()
 	}
 }
 
+void server::sendReply(client& c, std::string code, std::string message)
+{
+	std::string nick;
+
+	if (c.getNick().empty())
+		nick = "*";
+	else
+		nick = c.getNick();
+	std::string reply;
+	if (code[0])
+		reply = ":localhost " + code + " " + nick + " :" + message + "\r\n";
+	else
+		reply = ":localhost " + nick + " :" + message + "\r\n";
+	c.appendWrite(reply);
+}
+
 void server::removeClientGlobally(client* c)
 {
 	if (_channels.empty()) return;
@@ -150,22 +166,6 @@ std::vector<std::string> server::splitCommand(std::string str)
 	return args;
 }
 
-void server::sendReply(client& c, std::string code, std::string message)
-{
-	std::string nick;
-
-	if (c.getNick().empty())
-		nick = "*";
-	else
-		nick = c.getNick();
-	std::string reply;
-	if (code[0])
-		reply = ":localhost " + code + " " + nick + " :" + message + "\r\n";
-	else
-		reply = ":localhost " + nick + " :" + message + "\r\n";
-	c.appendWrite(reply);
-}
-
 void server::executeJoin(client& c, std::vector<std::string> args)
 {
 	if (args.empty() || !args[1][0])
@@ -202,7 +202,7 @@ void server::executePrivmsg(client& c, std::vector<std::string> args)
 		sendReply(c, "411", "ERR_NORECIPIENT");
 		return;
 	}
-	if (args.size() == 2 || (args.size() == 3 && args[3].empty()))
+	if (args.size() == 2 || (args.size() == 3 && args[2].empty()))
 	{
 		sendReply(c, "412", "ERR_NOTEXTTOSEND");
 		return ;
@@ -277,6 +277,16 @@ void server::executeUser(client& c, std::vector<std::string> args)
 	//TODO
 }
 
+void server::executePONG(client& c, std::vector<std::string> args)
+{
+	if (args.size() == 1)
+	{
+		sendReply(c, "409", "ERR_NOORIGIN");
+		return ;
+	}
+	c.appendWrite(":localhost PONG :" + args[1] + "\r\n");
+}
+
 void server::checkRegistration(client &c)
 {
 	if (c.getState() == REGISTERED)
@@ -288,15 +298,6 @@ void server::checkRegistration(client &c)
 	}
 }
 
-void server::executePONG(client& c, std::vector<std::string> args)
-{
-	if (args.size() == 1)
-	{
-		sendReply(c, "409", "ERR_NOORIGIN");
-		return ;
-	}
-	c.appendWrite(":localhost PONG :" + args[1] + "\r\n");
-}
 
 void server::parseAndExecute(client &c, std::string full_command)
 {
@@ -324,6 +325,8 @@ void server::parseAndExecute(client &c, std::string full_command)
 		executePrivmsg(c, args);
 	else if (command_name == "NICK")
 		executeNick(c, args);
+	else if (commande_name == "MODE")
+		executeMode(c, args);
 	else
 		sendReply(c, "421", command_name + " :Unknown command");
 }
