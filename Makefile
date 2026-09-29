@@ -2,7 +2,7 @@ NAME = ircserv
 CXX = c++
 CXXFLAGS = -Wall -Wextra -Werror -std=c++98
 
-SRC = main.cpp parsing.cpp server.cpp client.cpp channel.cpp
+SRC = main.cpp parsing.cpp server.cpp client.cpp channel.cpp server_operator.cpp
 OBJ = $(SRC:.cpp=.o)
 
 all: $(NAME)

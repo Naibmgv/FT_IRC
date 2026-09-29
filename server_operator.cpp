@@ -90,7 +90,7 @@ void server::executeMode(client& c, std::vector<std::string> args)
     }
 	bool toAdd = false;
 	std::vector<std::string>::iterator it_params = params.begin();
-	for (int i = 0; i < modes.size(); i++)
+	for (std::size_t i = 0; i < modes.size(); i++)
 	{
 		if (modes[i] == '+') toAdd = true;
 		else if (modes[i] == '-') toAdd = false;

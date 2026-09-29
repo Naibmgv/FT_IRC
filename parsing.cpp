@@ -9,7 +9,7 @@ bool parsing(char *port, char *mdp)
 	}
 	char *end;
 	long tmp = strtol(port, &end, 10);
-	if (end || tmp < 1024 || tmp > 65535)
+	if (*end != '\0' || tmp < 1024 || tmp > 65535)
 	{
 		std::cerr << "Error : 'Incorrect argument(s) syntaxe'" << std::endl;
 		return true;

@@ -6,7 +6,7 @@
 /*   By: nmagamad <nmagamad@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/26 17:55:01 by ehattab           #+#    #+#             */
-/*   Updated: 2026/09/28 19:50:16 by nmagamad         ###   ########.fr       */
+/*   Updated: 2026/09/29 14:36:12 by nmagamad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -184,9 +184,9 @@ std::string channel::getAllUsers() const
 {
 	if (_operators.empty() && _clients.empty()) return "";
 	std::string nameslist;
-	for(int i = 0; i < _operators.size(); i++)
+	for(std::size_t i = 0; i < _operators.size(); i++)
 		nameslist += "@" + _operators[i]->getUser() + " ";
-	for(int i = 0; i < _clients.size(); i++)
+	for(std::size_t i = 0; i < _clients.size(); i++)
 		nameslist += _clients[i]->getUser() + " ";
 	nameslist.erase(nameslist.end() - 1);
 	return nameslist;
@@ -203,7 +203,7 @@ void channel::removecurrentModes(std::string data)
 {
 	if (_currentModes.empty())
 		return ;
-	for (int i = 0; i < _currentModes.size(); i++)
+	for (std::size_t i = 0; i < _currentModes.size(); i++)
 	{
 		if (data.find(_currentModes[i]))
 			_currentModes.erase(_currentModes[i]);

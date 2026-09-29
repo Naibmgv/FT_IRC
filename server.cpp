@@ -208,11 +208,11 @@ void server::executePrivmsg(client& c, std::vector<std::string> args)
 		return ;
 	}
 	std::string msg;
-	for(int i = 2; i < args.size(); i++)
+	for(std::size_t i = 2; i < args.size(); i++)
 		msg += args[i] + ' ';
 	msg.erase(msg.size() - 1);
 	if (msg[0] == ':')
-		msg.erase(msg.front());
+		msg.erase(msg[0]);
 	std::string fullmsg = ":" + c.getNick() + "!" + c.getUser() + "@" + c.getIp() + " PRIVMSG " + args[1] + " :" + msg + "\r\n";
 	if (args[2][0] == '#')
 	{
@@ -262,20 +262,20 @@ void server::executePass(client& c, std::vector<std::string> args)
 		sendReply(c, "464", "Password incorrect");
 }
 
-void server::executeNick(client& c, std::vector<std::string> args)
-{
-	if (args.empty()) {
-		// TODO IRC: Send ERR_NONICKNAMEGIVEN (431)
-		return;
-	}
+// void server::executeNick(client& c, std::vector<std::string> args)
+// {
+// 	if (args.empty()) {
+// 		// TODO IRC: Send ERR_NONICKNAMEGIVEN (431)
+// 		return;
+// 	}
 
-	// TODO IRC: Check duplication (ERR_NICKNAMEINUSE 433)
-}
+// 	// TODO IRC: Check duplication (ERR_NICKNAMEINUSE 433)
+// }
 
-void server::executeUser(client& c, std::vector<std::string> args)
-{
-	//TODO
-}
+// void server::executeUser(client& c, std::vector<std::string> args)
+// {
+// 	//TODO
+// }
 
 void server::executePONG(client& c, std::vector<std::string> args)
 {
@@ -306,14 +306,14 @@ void server::parseAndExecute(client &c, std::string full_command)
 		return;
 	std::string command_name = args[0];
 	args.erase(args.begin());
-	if (c.getState() != REGISTERED)
-	{
-		if (command_name == "PASS") executePass(c, args);
-		else if (command_name == "NICK") executeNick(c, args);
-		else if (command_name == "USER") executeUser(c, args);
-		else sendReply(c, "451", "You have not registered");
-		
-	}
+	// if (c.getState() != REGISTERED)
+	// {
+		// if (command_name == "PASS") executePass(c, args);
+		// else if (command_name == "NICK") executeNick(c, args);
+		// else if (command_name == "USER") executeUser(c, args);
+		// else sendReply(c, "451", "You have not registered");
+		// 
+	// }
 	if (command_name == "WHO" || command_name == "VERSION" || command_name == "CAP LS" || command_name == "MOTD" || command_name == "LUSERS")
 		return ;
 	else if (command_name == "PING")
@@ -322,8 +322,8 @@ void server::parseAndExecute(client &c, std::string full_command)
 		executeJoin(c, args);
 	else if (command_name == "PRIVMSG")
 		executePrivmsg(c, args);
-	else if (command_name == "NICK")
-		executeNick(c, args);
+	// else if (command_name == "NICK")
+		// executeNick(c, args);
 	else if (command_name == "MODE")
 		executeMode(c, args);
 	else
