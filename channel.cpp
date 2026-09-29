@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   channel.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: nmagamad <nmagamad@student.42.fr>          +#+  +:+       +#+        */
+/*   By: ehattab <ehattab@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/26 17:55:01 by ehattab           #+#    #+#             */
-/*   Updated: 2026/09/29 14:36:12 by nmagamad         ###   ########.fr       */
+/*   Updated: 2026/09/29 17:42:29 by ehattab          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -161,7 +161,7 @@ void channel::broadcast(std::string message, client* sender)
 	for (size_t i = 0; i < _clients.size(); i++)
 	{
 		if (sender == NULL || _clients[i]->getFd() != sender->getFd())
-			_clients[i]->appendWrite(message);
+			_clients[i]->appendWrite(message + "\r\n");
 	}
 }
 
@@ -173,6 +173,39 @@ bool channel::isEmpty() const
 void	channel::setName(const std::string& name)
 {
 	_name = name;
+}
+
+
+void channel::addInvited(client* c)
+{
+	if (!isInvited(c))
+	{
+		_invited.push_back(c);
+	}
+}
+
+bool channel::isInvited(client* c)
+{
+	for (size_t i = 0; i < _invited.size(); i++)
+	{
+		if (_invited[i]->getFd() == c->getFd())
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+void channel::removeInvited(client* c)
+{
+	for (size_t i = 0; i < _invited.size(); i++)
+	{
+		if (_invited[i]->getFd() == c->getFd())
+		{
+			_invited.erase(_invited.begin() + i);
+			break;
+		}
+	}
 }
 
 size_t channel::getUserAmount() const

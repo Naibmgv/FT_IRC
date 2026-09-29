@@ -48,6 +48,8 @@ class server
 		void executeUser(client& c, std::vector<std::string> args);
 		void executeJoin(client& c, std::vector<std::string> args);
 		void executePrivmsg(client& c, std::vector<std::string> args);
+		void executeTopic(client& c, std::vector<std::string> args);
+		void executeInvite(client& c, std::vector<std::string> args);
 		void sendReply(client& c, std::string code, std::string message);
 		void checkRegistration(client& c);
 	public:
@@ -149,6 +151,9 @@ class channel
 
 		bool	isInviteOnly() const;
 		bool	isTopicRestricted() const;
+		bool	isInvited(client* c);
+		void	addInvited(client* c);
+		void	removeInvited(client* c);
 
 		void 	removecurrentModes(std::string data);
 		void	setcurrentModes(std::string data);

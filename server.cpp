@@ -168,7 +168,7 @@ std::vector<std::string> server::splitCommand(std::string str)
 
 void server::executeJoin(client& c, std::vector<std::string> args)
 {
-	if (args.empty() || !args[1][0])
+	if (args.size() < 2 || !args[1][0])
 	{
 		sendReply(c, "461", "ERR_NEEDMOREPARAMS");
 		return;
@@ -177,6 +177,17 @@ void server::executeJoin(client& c, std::vector<std::string> args)
 	{
 		channel tmp;
 		tmp.setName(args[1]);
+		tmp.addOperator(&c);
+		_channels[args[1]] = tmp;
+	}
+	if (_channels[args[1]].isInviteOnly())
+	{
+		if (!_channels[args[1]].isInvited(&c))
+		{
+			sendReply(c, "473", args[1] + " :ERR_INVITEONLYCHAN");
+			return;
+		}
+		_channels[args[1]].removeInvited(&c);
 	}
 	if (_channels[args[1]].getUserLimit() != 0)
 	{
@@ -197,12 +208,12 @@ void server::executeJoin(client& c, std::vector<std::string> args)
 
 void server::executePrivmsg(client& c, std::vector<std::string> args)
 {
-	if (args.size() == 1 || (args.size() == 2 && args[2].empty()))
+	if (args.size() < 2 || (args.size() == 2 && args[2].empty()))
 	{
 		sendReply(c, "411", "ERR_NORECIPIENT");
 		return;
 	}
-	if (args.size() == 2 || (args.size() == 3 && args[2].empty()))
+	if (args.size() < 3 || (args.size() == 3 && args[2].empty()))
 	{
 		sendReply(c, "412", "ERR_NOTEXTTOSEND");
 		return ;
@@ -214,12 +225,12 @@ void server::executePrivmsg(client& c, std::vector<std::string> args)
 	if (msg[0] == ':')
 		msg.erase(msg[0]);
 	std::string fullmsg = ":" + c.getNick() + "!" + c.getUser() + "@" + c.getIp() + " PRIVMSG " + args[1] + " :" + msg + "\r\n";
-	if (args[2][0] == '#')
+	if (args[1][0] == '#')
 	{
-		channels_iterator it = _channels.find(args[2]);
+		channels_iterator it = _channels.find(args[1]);
 		if (it == _channels.end())
 		{
-			sendReply(c, "403", "ERR_NOSUCHCHANNEL");
+			sendReply(c, "403", args[1] + " ERR_NOSUCHCHANNEL");
 			return;
 		}
 		it->second.broadcast(msg, &c);
@@ -238,7 +249,7 @@ void server::executePrivmsg(client& c, std::vector<std::string> args)
 		}
 		if (it == _clients.end())
 		{
-			sendReply(c, "401", "ERR_NOSUCHNICK");
+			sendReply(c, "401", args[1] + " ERR_NOSUCHNICK");
 			return ;
 		}
 	}
@@ -246,45 +257,60 @@ void server::executePrivmsg(client& c, std::vector<std::string> args)
 
 void server::executePass(client& c, std::vector<std::string> args)
 {
-	if (args.empty())
+	if (args.size() < 2)
 	{
-		sendReply(c, "461", "PASS :Not enough parameters");
+		sendReply(c, "461", "PASS :ERR_NEEDMOREPARAMS");
 		return;
 	}
 	if (c.getState() != UNREGISTERED)
 	{
-		sendReply(c, "462", "You may not reregister");
+		sendReply(c, "462", "ERR_ALREADYREGISTRED");
 		return;
 	}
-	if (args[0] == _password)
+	if (args[1] == _password)
 		c.setState(PASS_OK);
 	else
-		sendReply(c, "464", "Password incorrect");
+		sendReply(c, "464", "ERR_PASSWDMISMATCH");
 }
 
-// void server::executeNick(client& c, std::vector<std::string> args)
-// {
-// 	if (args.empty()) {
-// 		// TODO IRC: Send ERR_NONICKNAMEGIVEN (431)
-// 		return;
-// 	}
-
-// 	// TODO IRC: Check duplication (ERR_NICKNAMEINUSE 433)
-// }
-
-// void server::executeUser(client& c, std::vector<std::string> args)
-// {
-// 	//TODO
-// }
-
-void server::executePONG(client& c, std::vector<std::string> args)
+void server::executeNick(client& c, std::vector<std::string> args)
 {
-	if (args.size() == 1)
+	if (args.size() < 2 || args[1].empty())
 	{
-		sendReply(c, "409", "ERR_NOORIGIN");
-		return ;
+		sendReply(c, "431", "ERR_NONICKNAMEGIVEN");
+		return;
 	}
-	c.appendWrite(":localhost PONG :" + args[1] + "\r\n");
+	std::string new_nick = args[1];
+	std::map<int, client>::iterator it = _clients.begin();
+	
+	while (it != _clients.end())
+	{
+		if (it->second.getNick() == new_nick && it->first != c.getFd())
+		{
+			sendReply(c, "433", new_nick + " :ERR_NICKNAMEINUSE");
+			return;
+		}
+		++it;
+	}
+	c.setNick(new_nick);
+	checkRegistration(c);
+}
+
+
+void server::executeUser(client& c, std::vector<std::string> args)
+{
+	if (args.size() < 5)
+	{
+		sendReply(c, "461", "ERR_NEEDMOREPARAMS");
+		return;
+	}
+	if (c.getState() == REGISTERED || !c.getUser().empty())
+	{
+		sendReply(c, "462", "ERR_ALREADYREGISTRED");
+		return;
+	}
+	c.setUser(args[1]);
+	checkRegistration(c);
 }
 
 void server::checkRegistration(client &c)
@@ -298,6 +324,106 @@ void server::checkRegistration(client &c)
 	}
 }
 
+void server::executeTopic(client& c, std::vector<std::string> args)
+{
+	if (args.size() < 2)
+	{
+		sendReply(c, "461", "ERR_NEEDMOREPARAMS");
+		return;
+	}
+	std::map<std::string, channel>::iterator it = _channels.find(args[1]);
+	if (it == _channels.end())
+	{
+		sendReply(c, "403", "ERR_NOSUCHCHANNEL");
+		return;
+	}
+	if (!it->second.hasClient(&c))
+	{
+		sendReply(c, "442", "ERR_NOTONCHANNEL");
+		return;
+	}
+	if (args.size() > 2)
+	{
+		if (it->second.isTopicRestricted()&& !it->second.isOperator(&c))
+		{
+			sendReply(c, "482", "ERR_CHANOPRIVSNEEDED");
+			return;
+		}
+		it->second.setTopic(args[2]);
+		it->second.broadcast(":" + c.getNick() + "!" + c.getUser() + "@" + c.getIp() + " TOPIC "
+		 + it->second.getName() + " :" + it->second.getTopic(), NULL);
+	}
+	else
+	{
+		if (it->second.getTopic().empty())
+			sendReply(c, "331", args[1] + " : NOTOPIC");
+		else
+			sendReply(c, "332", args[1] + " :" + it->second.getTopic());
+	}
+}
+
+void server::executeInvite(client& c, std::vector<std::string> args)
+{
+	if (args.size() < 3)
+	{
+		sendReply(c, "461", "ERR_NEEDMOREPARAMS");
+		return;
+	}
+
+	std::string target_nick = args[1];
+	std::string chan_name = args[2];
+	channels_iterator chan_it = _channels.find(chan_name);
+	if (chan_it == _channels.end())
+	{
+		sendReply(c, "403", chan_name + "ERR_NOSUCHCHANNEL");
+		return;
+	}
+	if (!chan_it->second.hasClient(&c))
+	{
+		sendReply(c, "442", chan_name + "ERR_NOTONCHANNEL");
+		return;
+	}
+	if (chan_it->second.isInviteOnly() && !chan_it->second.isOperator(&c))
+	{
+		sendReply(c, "482", chan_name + "ERR_CHANOPRIVSNEEDED");
+		return;
+	}
+	client* target_client = NULL;
+	std::map<int, client>::iterator cli_it = _clients.begin();
+	while (cli_it != _clients.end())
+	{
+		if (cli_it->second.getNick() == target_nick)
+		{
+			target_client = &(cli_it->second);
+			break;
+		}
+		++cli_it;
+	}
+	if (target_client == NULL)
+	{
+		sendReply(c, "401", target_nick + "ERR_NOSUCHNICK");
+		return;
+	}
+	if (chan_it->second.hasClient(target_client))
+	{
+		sendReply(c, "443", target_nick + " " + chan_name + "ERR_USERONCHANNEL");
+		return;
+	}
+	chan_it->second.addInvited(target_client);
+	sendReply(c, "341", target_nick + " " + chan_name);
+	target_client->appendWrite(":" + c.getNick() + "!" + c.getUser() + "@" + c.getIp()
+	+ " INVITE " + target_nick + " :"+ chan_name + "\r\n");
+}
+
+void server::executePONG(client& c, std::vector<std::string> args)
+{
+	if (args.size() == 1)
+	{
+		sendReply(c, "409", "ERR_NOORIGIN");
+		return ;
+	}
+	c.appendWrite(":localhost PONG :" + args[1] + "\r\n");
+}
 
 void server::parseAndExecute(client &c, std::string full_command)
 {
@@ -305,15 +431,18 @@ void server::parseAndExecute(client &c, std::string full_command)
 	if (args.empty())
 		return;
 	std::string command_name = args[0];
-	args.erase(args.begin());
-	// if (c.getState() != REGISTERED)
-	// {
-		// if (command_name == "PASS") executePass(c, args);
-		// else if (command_name == "NICK") executeNick(c, args);
-		// else if (command_name == "USER") executeUser(c, args);
-		// else sendReply(c, "451", "You have not registered");
-		// 
-	// }
+	if (c.getState() != REGISTERED)
+	{
+		if (command_name == "PASS")
+			executePass(c, args);
+		else if (command_name == "NICK")
+			executeNick(c, args);
+		else if (command_name == "USER")
+			executeUser(c, args);
+		else
+			sendReply(c, "451", "You have not registered");
+		return;
+	}
 	if (command_name == "WHO" || command_name == "VERSION" || command_name == "CAP LS" || command_name == "MOTD" || command_name == "LUSERS")
 		return ;
 	else if (command_name == "PING")
@@ -322,10 +451,14 @@ void server::parseAndExecute(client &c, std::string full_command)
 		executeJoin(c, args);
 	else if (command_name == "PRIVMSG")
 		executePrivmsg(c, args);
-	// else if (command_name == "NICK")
-		// executeNick(c, args);
 	else if (command_name == "MODE")
 		executeMode(c, args);
+	else if (command_name == "NICK")
+		executeNick(c, args);
+	else if (command_name == "TOPIC")
+		executeTopic(c, args);
+	else if (command_name == "INVITE")
+		executeInvite(c, args);
 	else
 		sendReply(c, "421", command_name + " :Unknown command");
 }
