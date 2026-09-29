@@ -177,6 +177,17 @@ void server::executeJoin(client& c, std::vector<std::string> args)
 	{
 		channel tmp;
 		tmp.setName(args[1]);
+		tmp.addOperator(&c);
+		_channels[args[1]] = tmp;
+	}
+	if (_channels[args[1]].isInviteOnly())
+	{
+		if (!_channels[args[1]].isInvited(&c))
+		{
+			sendReply(c, "473", args[1] + " :ERR_INVITEONLYCHAN");
+			return;
+		}
+		_channels[args[1]].removeInvited(&c);
 	}
 	if (_channels[args[1]].getUserLimit() != 0)
 	{
@@ -289,7 +300,7 @@ void server::executeUser(client& c, std::vector<std::string> args)
 {
 	if (args.size() < 4)
 	{
-		sendReply(c, "461", "USER :ERR_NEEDMOREPARAMS");
+		sendReply(c, "461", "ERR_NEEDMOREPARAMS");
 		return;
 	}
 	if (c.getState() == REGISTERED || !c.getUser().empty())
@@ -310,6 +321,97 @@ void server::checkRegistration(client &c)
 		c.setState(REGISTERED);
 		sendReply(c, "001", "Welcome to the 42 IRC Network " + c.getNick());
 	}
+}
+
+void server::executeTopic(client& c, std::vector<std::string> args)
+{
+	if (args.empty())
+	{
+		sendReply(c, "461", "ERR_NEEDMOREPARAMS");
+		return;
+	}
+	std::map<std::string, channel>::iterator it = _channels.find(args[0]);
+	if (it == _channels.end())
+	{
+		sendReply(c, "403", "ERR_NOSUCHCHANNEL");
+		return;
+	}
+	if (!it->second.hasClient(&c))
+	{
+		sendReply(c, "442", "ERR_NOTONCHANNEL");
+		return;
+	}
+	if (args.size() > 1)
+	{
+		if (it->second.isTopicRestricted()&& !it->second.isOperator(&c))
+		{
+			sendReply(c, "482", "ERR_CHANOPRIVSNEEDED");
+			return;
+		}
+		it->second.setTopic(args[1]);
+		it->second.broadcast(":" + c.getNick() + "!" + c.getUser() + "@" + c.getIp() + " TOPIC "
+		 + it->second.getName() + " :" + it->second.getTopic(), NULL);
+	}
+	else
+	{
+		if (it->second.getTopic().empty())
+			sendReply(c, "331", args[0] + " : NOTOPIC");
+		else
+			sendReply(c, "332", args[0] + " :" + it->second.getTopic());
+	}
+}
+
+void server::executeInvite(client& c, std::vector<std::string> args)
+{
+	if (args.size() < 3)
+	{
+		sendReply(c, "461", "ERR_NEEDMOREPARAMS");
+		return;
+	}
+
+	std::string target_nick = args[1];
+	std::string chan_name = args[2];
+	channels_iterator chan_it = _channels.find(chan_name);
+	if (chan_it == _channels.end())
+	{
+		sendReply(c, "403", chan_name + "ERR_NOSUCHCHANNEL");
+		return;
+	}
+	if (!chan_it->second.hasClient(&c))
+	{
+		sendReply(c, "442", chan_name + "ERR_NOTONCHANNEL");
+		return;
+	}
+	if (chan_it->second.isInviteOnly() && !chan_it->second.isOperator(&c))
+	{
+		sendReply(c, "482", chan_name + "ERR_CHANOPRIVSNEEDED");
+		return;
+	}
+	client* target_client = NULL;
+	std::map<int, client>::iterator cli_it = _clients.begin();
+	while (cli_it != _clients.end())
+	{
+		if (cli_it->second.getNick() == target_nick)
+		{
+			target_client = &(cli_it->second);
+			break;
+		}
+		++cli_it;
+	}
+	if (target_client == NULL)
+	{
+		sendReply(c, "401", target_nick + "ERR_NOSUCHNICK");
+		return;
+	}
+	if (chan_it->second.hasClient(target_client))
+	{
+		sendReply(c, "443", target_nick + " " + chan_name + "ERR_USERONCHANNEL");
+		return;
+	}
+	chan_it->second.addInvited(target_client);
+	sendReply(c, "341", target_nick + " " + chan_name);
+	target_client->appendWrite(":" + c.getNick() + "!" + c.getUser() + "@" + c.getIp()
+	+ " INVITE " + target_nick + " :"+ chan_name + "\r\n");
 }
 
 void server::executePONG(client& c, std::vector<std::string> args)
@@ -348,6 +450,10 @@ void server::parseAndExecute(client &c, std::string full_command)
 		executePrivmsg(c, args);
 	else if (command_name == "NICK")
 		executeNick(c, args);
+	else if (command_name == "TOPIC")
+		executeTopic(c, args);
+	else if (command_name == "INVITE")
+		executeInvite(c, args);
 	else
 		sendReply(c, "421", command_name + " :Unknown command");
 }
