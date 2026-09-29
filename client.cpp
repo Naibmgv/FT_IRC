@@ -6,7 +6,7 @@
 /*   By: nmagamad <nmagamad@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/26 17:55:05 by ehattab           #+#    #+#             */
-/*   Updated: 2026/09/27 15:37:05 by nmagamad         ###   ########.fr       */
+/*   Updated: 2026/09/29 22:15:04 by nmagamad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -79,7 +79,7 @@ std::string client::getreadBuf() const
 	return _readBuf;
 }
 
-void client::appendreadBuf(std::string data, int rval)
+void client::appendreadBuf(const char *data, int rval)
 {
 	_readBuf.append(data, rval);
 }

@@ -1,4 +1,5 @@
 #include "server.hpp"
+#include <unistd.h>
 
 void server::init_server()
 {
@@ -19,6 +20,7 @@ void server::init_server()
 		throw servinit_error();
 	if (listen(_sfd, SOMAXCONN) == -1)
 		throw servinit_error();
+	std::cout << " Server listen() port:" << _port << std::endl;
 }
 
 void server::run_server()
@@ -51,12 +53,13 @@ void server::run_server()
 			pollfds.back().fd = fd_tmp;
 			_clients[fd_tmp] = client(fd_tmp, inet_ntoa(tmp.sin_addr));
 		}
-		for (std::size_t i = 0; i < pollfds.size(); i++) 
+		for (std::size_t i = 1; i < pollfds.size(); i++) 
 		{
 			if (pollfds[i].revents & POLLIN) // Reception message client
 			{
 				char tmp_buff[1024];
 				int rval = recv(pollfds[i].fd, tmp_buff, 1024, 0);
+				std::cout << std::endl;
 				if (rval == -1 || rval == 0)
 				{
 					removeClientGlobally(&_clients[i]);
@@ -66,6 +69,7 @@ void server::run_server()
 					i--;
 					continue;
 				}
+
 				_clients[pollfds[i].fd].appendreadBuf(tmp_buff, rval);
 				if (_clients[pollfds[i].fd].getreadBuf().size() > 5000) // Systeme antiDDos
 				{
@@ -76,17 +80,28 @@ void server::run_server()
 					i--;
 					continue;
 				}
-				std::string::size_type pos = _clients[pollfds[i].fd].getreadBuf().find("\r\n");
-				if (pos != std::string::npos)
+				while (true)
 				{
-					std::string command = _clients[pollfds[i].fd].getreadBuf().substr(0, pos);
-					parseAndExecute(_clients[pollfds[i].fd], command);
-					_clients[pollfds[i].fd].resetreadbuf(pos + 2);
+					std::cout << "readbuf : " << _clients[pollfds[i].fd].getreadBuf() << std::endl;
+					std::string::size_type pos = _clients[pollfds[i].fd].getreadBuf().find("\r\n");
+					if (pos == std::string::npos)
+						std::cout << "NPOS" << std::endl;
+					if (pos != std::string::npos)
+					{
+						std::string command = _clients[pollfds[i].fd].getreadBuf().substr(0, pos);
+						std::cout << "commande recu : " << command << std::endl;
+						parseAndExecute(_clients[pollfds[i].fd], command);
+						_clients[pollfds[i].fd].resetreadbuf(pos + 2);
+						std::cout << "commande recu(apres traitement) : " << command << std::endl;
+					}
+					else
+						break ;
 				}
 			}
 			if (pollfds[i].revents & POLLOUT)
 			{
 				if (_clients[pollfds[i].fd].getWritebuf().empty()) continue;
+				std::cout << "commande recu : " << _clients[pollfds[i].fd].getWritebuf().c_str() << std::endl;
 				int rval = send(pollfds[i].fd, _clients[pollfds[i].fd].getWritebuf().c_str(), _clients[pollfds[i].fd].getWritebuf().size(), 0);
 				if (rval == -1)
 				{

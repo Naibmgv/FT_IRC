@@ -9,7 +9,6 @@ int main(int ac, char **av)
 	if (parsing(av[1], av[2]))
 		return 1;
 	server test(atoi(av[1]), av[2]);
-
 	try
 	{
 		test.init_server();

@@ -113,7 +113,7 @@ class client
 		void	setNick(std::string nick);
 		void	setUser(std::string user);
 		
-		void	appendreadBuf(std::string data, int rval);
+		void	appendreadBuf(const char *data, int rval);
 		void	resetreadbuf(std::string::size_type pos);
 
 		void	appendWrite(std::string data);
