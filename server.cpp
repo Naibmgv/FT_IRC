@@ -62,7 +62,7 @@ void server::run_server()
 				std::cout << std::endl;
 				if (rval == -1 || rval == 0)
 				{
-					removeClientGlobally(&_clients[i]);
+					removeClientGlobally(&_clients[pollfds[i].fd]);
 					close(pollfds[i].fd);
 					_clients.erase(pollfds[i].fd);
 					pollfds.erase(pollfds.begin() + i);
@@ -73,7 +73,7 @@ void server::run_server()
 				_clients[pollfds[i].fd].appendreadBuf(tmp_buff, rval);
 				if (_clients[pollfds[i].fd].getreadBuf().size() > 5000) // Systeme antiDDos
 				{
-					removeClientGlobally(&_clients[i]);
+					removeClientGlobally(&_clients[pollfds[i].fd]);
 					close(pollfds[i].fd);
 					_clients.erase(pollfds[i].fd);
 					pollfds.erase(pollfds.begin() + i);
@@ -105,7 +105,7 @@ void server::run_server()
 				int rval = send(pollfds[i].fd, _clients[pollfds[i].fd].getWritebuf().c_str(), _clients[pollfds[i].fd].getWritebuf().size(), 0);
 				if (rval == -1)
 				{
-					removeClientGlobally(&_clients[i]);
+					removeClientGlobally(&_clients[pollfds[i].fd]);
 					close(pollfds[i].fd);
 					_clients.erase(pollfds[i].fd);
 					pollfds.erase(pollfds.begin() + i);
@@ -128,9 +128,9 @@ void server::sendReply(client& c, std::string code, std::string message)
 		nick = c.getNick();
 	std::string reply;
 	if (code[0])
-		reply = ":localhost " + code + " " + nick + " :" + message + "\r\n";
+		reply = ":localhost " + code + " " + nick + " " + message + "\r\n";
 	else
-		reply = ":localhost " + nick + " :" + message + "\r\n";
+		reply = ":localhost " + nick + " " + message + "\r\n";
 	c.appendWrite(reply);
 }
 
@@ -185,7 +185,7 @@ void server::executeJoin(client& c, std::vector<std::string> args)
 {
 	if (args.size() < 2 || !args[1][0])
 	{
-		sendReply(c, "461", "ERR_NEEDMOREPARAMS");
+		sendReply(c, "461", args[0] + " ERR_NEEDMOREPARAMS");
 		return;
 	}
 	if (_channels.find(args[1]) == _channels.end())
@@ -213,7 +213,7 @@ void server::executeJoin(client& c, std::vector<std::string> args)
 		}
 	}
 	_channels[args[1]].addClient(&c);
-	_channels[args[1]].broadcast(c.getUser() + "is joining the channnel", &c);
+	_channels[args[1]].broadcast(":" + c.getNick() + "!" + c.getUser() + "@" + c.getIp() + " JOIN :" + args[1], &c);
 	if (_channels[args[1]].getTopic().empty())
 		sendReply(c, "331", args[1] + " :No topic is set");
 	else
@@ -223,12 +223,12 @@ void server::executeJoin(client& c, std::vector<std::string> args)
 
 void server::executePrivmsg(client& c, std::vector<std::string> args)
 {
-	if (args.size() < 2 || (args.size() == 2 && args[2].empty()))
+	if (args.size() < 2 || args[1].empty())
 	{
 		sendReply(c, "411", "ERR_NORECIPIENT");
 		return;
 	}
-	if (args.size() < 3 || (args.size() == 3 && args[2].empty()))
+	if (args.size() < 3 || args[2].empty())
 	{
 		sendReply(c, "412", "ERR_NOTEXTTOSEND");
 		return ;
@@ -236,10 +236,11 @@ void server::executePrivmsg(client& c, std::vector<std::string> args)
 	std::string msg;
 	for(std::size_t i = 2; i < args.size(); i++)
 		msg += args[i] + ' ';
-	msg.erase(msg.size() - 1);
+	if (!msg.empty())
+		msg.erase(msg.size() - 1);
 	if (msg[0] == ':')
 		msg.erase(msg[0]);
-	std::string fullmsg = ":" + c.getNick() + "!" + c.getUser() + "@" + c.getIp() + " PRIVMSG " + args[1] + " :" + msg + "\r\n";
+	std::string fullmsg = ":" + c.getNick() + "!" + c.getUser() + "@" + c.getIp() + " PRIVMSG " + args[1] + " :" + msg;
 	if (args[1][0] == '#')
 	{
 		channels_iterator it = _channels.find(args[1]);
@@ -248,7 +249,7 @@ void server::executePrivmsg(client& c, std::vector<std::string> args)
 			sendReply(c, "403", args[1] + " ERR_NOSUCHCHANNEL");
 			return;
 		}
-		it->second.broadcast(msg, &c);
+		it->second.broadcast(fullmsg, &c);
 	}
 	else
 	{
@@ -257,7 +258,7 @@ void server::executePrivmsg(client& c, std::vector<std::string> args)
 		{
 			if (it->second.getNick() == args[1])
 			{
-				it->second.appendWrite(fullmsg);
+				it->second.appendWrite(fullmsg + "\r\n");
 				break ;
 			}
 			++it;
@@ -316,7 +317,7 @@ void server::executeUser(client& c, std::vector<std::string> args)
 {
 	if (args.size() < 5)
 	{
-		sendReply(c, "461", "ERR_NEEDMOREPARAMS");
+		sendReply(c, "461", args[0] + " ERR_NEEDMOREPARAMS");
 		return;
 	}
 	if (c.getState() == REGISTERED || !c.getUser().empty())
@@ -343,13 +344,13 @@ void server::executeTopic(client& c, std::vector<std::string> args)
 {
 	if (args.size() < 2)
 	{
-		sendReply(c, "461", "ERR_NEEDMOREPARAMS");
+		sendReply(c, "461", args[0] + " ERR_NEEDMOREPARAMS");
 		return;
 	}
 	std::map<std::string, channel>::iterator it = _channels.find(args[1]);
 	if (it == _channels.end())
 	{
-		sendReply(c, "403", "ERR_NOSUCHCHANNEL");
+		sendReply(c, "403", " ERR_NOSUCHCHANNEL");
 		return;
 	}
 	if (!it->second.hasClient(&c))
@@ -361,7 +362,7 @@ void server::executeTopic(client& c, std::vector<std::string> args)
 	{
 		if (it->second.isTopicRestricted()&& !it->second.isOperator(&c))
 		{
-			sendReply(c, "482", "ERR_CHANOPRIVSNEEDED");
+			sendReply(c, "482", args[1] + " :ERR_CHANOPRIVSNEEDED");
 			return;
 		}
 		it->second.setTopic(args[2]);
@@ -381,7 +382,7 @@ void server::executeInvite(client& c, std::vector<std::string> args)
 {
 	if (args.size() < 3)
 	{
-		sendReply(c, "461", "ERR_NEEDMOREPARAMS");
+		sendReply(c, "461", args[0] + " ERR_NEEDMOREPARAMS");
 		return;
 	}
 
@@ -390,17 +391,17 @@ void server::executeInvite(client& c, std::vector<std::string> args)
 	channels_iterator chan_it = _channels.find(chan_name);
 	if (chan_it == _channels.end())
 	{
-		sendReply(c, "403", chan_name + "ERR_NOSUCHCHANNEL");
+		sendReply(c, "403", chan_name + " :ERR_NOSUCHCHANNEL");
 		return;
 	}
 	if (!chan_it->second.hasClient(&c))
 	{
-		sendReply(c, "442", chan_name + "ERR_NOTONCHANNEL");
+		sendReply(c, "442", chan_name + " :ERR_NOTONCHANNEL");
 		return;
 	}
 	if (chan_it->second.isInviteOnly() && !chan_it->second.isOperator(&c))
 	{
-		sendReply(c, "482", chan_name + "ERR_CHANOPRIVSNEEDED");
+		sendReply(c, "482", chan_name + " :ERR_CHANOPRIVSNEEDED");
 		return;
 	}
 	client* target_client = NULL;
@@ -474,6 +475,8 @@ void server::parseAndExecute(client &c, std::string full_command)
 		executeTopic(c, args);
 	else if (command_name == "INVITE")
 		executeInvite(c, args);
+	else if (command_name == "KICK")
+		executeKick(c, args);
 	else
 		sendReply(c, "421", command_name + " :Unknown command");
 }

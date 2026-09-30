@@ -3,12 +3,12 @@
 void server::executeKick(client& c, std::vector<std::string> args)
 {
 	if (args.size() == 1) {
-		sendReply(c, "461", "ERR_NEEDMOREPARAMS");
+		sendReply(c, "461", args[0] + " ERR_NEEDMOREPARAMS");
 		return ;
 	}
 	channels_iterator it = _channels.find(args[1]);
 	if (it == _channels.end()) {
-		sendReply(c, "403", "ERR_NOSUCHCHANNEL");
+		sendReply(c, "403", args[1] + " ERR_NOSUCHCHANNEL");
 		return;
 	}
 	if (!it->second.hasClient(&c)) {
@@ -31,8 +31,14 @@ void server::executeKick(client& c, std::vector<std::string> args)
 			}
 			break;
 		}
+		++cl_it;
 	}
-	std::string fullmsg = ":" + c.getNick() + "!" + c.getUser() + "@localhost KICK " + args[1] + args[2];
+	if (cl_it == _clients.end())
+	{
+		sendReply(c, "401", args[2] + " :ERR_NOSUCHNICK");
+		return;
+	}
+	std::string fullmsg = ":" + c.getNick() + "!" + c.getUser() + "@" + c.getIp() + " KICK " + args[1] + " " + args[2];
 	if (args.size() > 3 && !args[3].empty())
 	{
 		fullmsg += " :";
@@ -40,7 +46,7 @@ void server::executeKick(client& c, std::vector<std::string> args)
 			fullmsg += args[i] + " ";
 	}
 	fullmsg.erase(fullmsg.size() - 1);
-	it->second.broadcast(fullmsg, &c);
+	it->second.broadcast(fullmsg, NULL);
 	it->second.removeClient(&cl_it->second);
 	if (it->second.isOperator(&cl_it->second))
 		it->second.removeOperator(&cl_it->second);
@@ -113,7 +119,7 @@ void server::executeMode(client& c, std::vector<std::string> args)
 				{
 					if (it_client->second.getNick() == *it_params)
 						break ;
-					++it;
+					++it_client;
 				}
 				++it_params;
 				if (it_client == _clients.end())
@@ -148,7 +154,7 @@ void server::executeMode(client& c, std::vector<std::string> args)
 				{
 					if (it_client->second.getNick() == *it_params)
 						break ;
-					++it;
+					++it_client;
 				}
 				++it_params;
 				if (it_client == _clients.end())
@@ -161,4 +167,8 @@ void server::executeMode(client& c, std::vector<std::string> args)
 			else if (modes[i] == 'l') it->second.setUserLimit(0);
 		}
 	}
+	std::string modeMsg = ":" + c.getNick() + "!" + c.getUser() + "@" + c.getIp() + " MODE " + channel + " " + modes;
+	for (std::size_t i = 0; i < params.size(); i++)
+		modeMsg += " " + params[i];
+	it->second.broadcast(modeMsg, NULL);
 }
