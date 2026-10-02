@@ -72,8 +72,7 @@ void server::executeMode(client& c, std::vector<std::string> args)
 			sendReply(c, "403", "ERR_NOSUCHCHANNEL");
 			return;
 		}
-		sendReply(c, "324", channel + " " + it->second.getcurrentModes());
-		return ;
+		c.appendWrite(":localhost 324 " + c.getNick() + " " + channel + " " + it->second.getcurrentModes() + "\r\n");		return ;
 	}
 	channels_iterator it = _channels.find(channel);
 	if (it == _channels.end()) {

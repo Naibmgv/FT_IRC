@@ -59,7 +59,6 @@ void server::run_server()
 			{
 				char tmp_buff[1024];
 				int rval = recv(pollfds[i].fd, tmp_buff, 1024, 0);
-				std::cout << std::endl;
 				if (rval == -1 || rval == 0)
 				{
 					removeClientGlobally(&_clients[i]);
@@ -82,17 +81,13 @@ void server::run_server()
 				}
 				while (true)
 				{
-					std::cout << "readbuf : " << _clients[pollfds[i].fd].getreadBuf() << std::endl;
 					std::string::size_type pos = _clients[pollfds[i].fd].getreadBuf().find("\r\n");
-					if (pos == std::string::npos)
-						std::cout << "NPOS" << std::endl;
 					if (pos != std::string::npos)
 					{
 						std::string command = _clients[pollfds[i].fd].getreadBuf().substr(0, pos);
 						std::cout << "commande recu : " << command << std::endl;
 						parseAndExecute(_clients[pollfds[i].fd], command);
 						_clients[pollfds[i].fd].resetreadbuf(pos + 2);
-						std::cout << "commande recu(apres traitement) : " << command << std::endl;
 					}
 					else
 						break ;
@@ -101,8 +96,8 @@ void server::run_server()
 			if (pollfds[i].revents & POLLOUT)
 			{
 				if (_clients[pollfds[i].fd].getWritebuf().empty()) continue;
-				std::cout << "commande recu : " << _clients[pollfds[i].fd].getWritebuf().c_str() << std::endl;
-				int rval = send(pollfds[i].fd, _clients[pollfds[i].fd].getWritebuf().c_str(), _clients[pollfds[i].fd].getWritebuf().size(), 0);
+				std::cout << "commande envoye : " <<  _clients[pollfds[i].fd].getWritebuf().c_str() << std::endl;
+				int rval = send(pollfds[i].fd, _clients[pollfds[i].fd].getWritebuf().c_str(), _clients[pollfds[i].fd].getWritebuf().size(), 0);				
 				if (rval == -1)
 				{
 					removeClientGlobally(&_clients[i]);
@@ -213,17 +208,20 @@ void server::executeJoin(client& c, std::vector<std::string> args)
 		}
 	}
 	_channels[args[1]].addClient(&c);
-	_channels[args[1]].broadcast(c.getUser() + "is joining the channnel", &c);
+	std::string joinMsg = ":" + c.getNick() + "!" + c.getUser() + "@" + c.getIp() + " JOIN :" + args[1];
+	_channels[args[1]].broadcast(joinMsg, NULL);
 	if (_channels[args[1]].getTopic().empty())
-		sendReply(c, "331", args[1] + " :No topic is set");
+		c.appendWrite(":localhost 331 " + c.getNick() + " " + args[1] + " :No topic is set\r\n");
 	else
-		sendReply(c, "332", args[1] + _channels[args[1]].getTopic());
-	sendReply (c, "", _channels[args[1]].getAllUsers());
+		c.appendWrite(":localhost 332 " + c.getNick() + " " + args[1] + " :" + _channels[args[1]].getTopic() + "\r\n");
+	
+	c.appendWrite(":localhost 353 " + c.getNick() + " " + args[1] + " :" + _channels[args[1]].getAllUsers() + "\r\n");
+	c.appendWrite(":localhost 366 " + c.getNick() + " " + args[1] + " :End of /NAMES list\r\n");
 }
 
 void server::executePrivmsg(client& c, std::vector<std::string> args)
 {
-	if (args.size() < 2 || (args.size() == 2 && args[2].empty()))
+	if (args.size() < 2 || (args.size() == 2 && args[1].empty()))
 	{
 		sendReply(c, "411", "ERR_NORECIPIENT");
 		return;
@@ -238,8 +236,8 @@ void server::executePrivmsg(client& c, std::vector<std::string> args)
 		msg += args[i] + ' ';
 	msg.erase(msg.size() - 1);
 	if (msg[0] == ':')
-		msg.erase(msg[0]);
-	std::string fullmsg = ":" + c.getNick() + "!" + c.getUser() + "@" + c.getIp() + " PRIVMSG " + args[1] + " :" + msg + "\r\n";
+		msg.erase(0, 1);
+	std::string fullmsg = ":" + c.getNick() + "!" + c.getUser() + "@" + c.getIp() + " PRIVMSG " + args[1] + " :" + msg;
 	if (args[1][0] == '#')
 	{
 		channels_iterator it = _channels.find(args[1]);
@@ -248,7 +246,7 @@ void server::executePrivmsg(client& c, std::vector<std::string> args)
 			sendReply(c, "403", args[1] + " ERR_NOSUCHCHANNEL");
 			return;
 		}
-		it->second.broadcast(msg, &c);
+		it->second.broadcast(fullmsg, &c);
 	}
 	else
 	{
@@ -257,7 +255,7 @@ void server::executePrivmsg(client& c, std::vector<std::string> args)
 		{
 			if (it->second.getNick() == args[1])
 			{
-				it->second.appendWrite(fullmsg);
+				it->second.appendWrite(fullmsg + "\r\n");
 				break ;
 			}
 			++it;
@@ -448,6 +446,7 @@ void server::parseAndExecute(client &c, std::string full_command)
 	std::string command_name = args[0];
 	if (c.getState() != REGISTERED)
 	{
+		if (command_name == "CAP") return;
 		if (command_name == "PASS")
 			executePass(c, args);
 		else if (command_name == "NICK")
@@ -458,7 +457,13 @@ void server::parseAndExecute(client &c, std::string full_command)
 			sendReply(c, "451", "You have not registered");
 		return;
 	}
-	if (command_name == "WHO" || command_name == "VERSION" || command_name == "CAP LS" || command_name == "MOTD" || command_name == "LUSERS")
+	if (command_name == "WHO")
+	{
+		// if (args.size() >= 2)
+		// 	c.appendWrite(":localhost 315 " + c.getNick() + " " + args[1] + " :End of /WHO list\r\n");
+		return;
+	}
+	else if (command_name == "CAP" || command_name == "VERSION" || command_name == "MOTD" || command_name == "LUSERS")
 		return ;
 	else if (command_name == "PING")
 		executePONG(c, args);
@@ -474,6 +479,8 @@ void server::parseAndExecute(client &c, std::string full_command)
 		executeTopic(c, args);
 	else if (command_name == "INVITE")
 		executeInvite(c, args);
+	else if (command_name == "KICK")
+		executeKick(c, args);
 	else
 		sendReply(c, "421", command_name + " :Unknown command");
 }

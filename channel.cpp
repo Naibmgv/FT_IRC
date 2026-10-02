@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   channel.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ehattab <ehattab@student.42.fr>            +#+  +:+       +#+        */
+/*   By: nmagamad <nmagamad@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/26 17:55:01 by ehattab           #+#    #+#             */
-/*   Updated: 2026/09/29 17:42:29 by ehattab          ###   ########.fr       */
+/*   Updated: 2026/09/30 16:05:50 by nmagamad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -215,13 +215,25 @@ size_t channel::getUserAmount() const
 
 std::string channel::getAllUsers() const
 {
-	if (_operators.empty() && _clients.empty()) return "";
+	if (_clients.empty()) return "";
 	std::string nameslist;
-	for(std::size_t i = 0; i < _operators.size(); i++)
-		nameslist += "@" + _operators[i]->getUser() + " ";
 	for(std::size_t i = 0; i < _clients.size(); i++)
-		nameslist += _clients[i]->getUser() + " ";
-	nameslist.erase(nameslist.end() - 1);
+	{
+		bool is_op = false;
+		for (size_t j = 0; j < _operators.size(); j++) 
+		{
+			if (_operators[j]->getFd() == _clients[i]->getFd()) 
+			{
+				is_op = true;
+				break;
+			}
+		}
+		if (is_op)
+			nameslist += "@";
+		nameslist += _clients[i]->getNick() + " ";
+	}
+	if (!nameslist.empty())
+		nameslist.erase(nameslist.size() - 1);
 	return nameslist;
 }
 
